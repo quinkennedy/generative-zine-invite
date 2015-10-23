@@ -1,22 +1,16 @@
 import java.util.Properties;
 import geomerative.*;
-import shapes3d.utils.*;
-import shapes3d.animation.*;
-import shapes3d.*;
 
 Properties props;
-int delay = 100;
+boolean hasProps = false;
 PGraphics graphics;
-
-Extrusion e;
-Path path;
-Contour contour;
-ContourScale conScale;
+int iteration = 0;
 
 Properties loadCommandLine () {
 
   Properties props = new Properties();
   if (args != null) {
+    hasProps = true;
     boolean quoted = false;
     String currArg = null;
     for (String arg : args) {
@@ -33,6 +27,10 @@ Properties loadCommandLine () {
             quoted = true;
             currArg = parsed[0];
             parsed[1] = parsed[1].substring(1, parsed[1].length());
+            if (parsed[1].indexOf("\"") == parsed[1].length() - 1){
+              parsed[1] = parsed[1].substring(0, parsed[1].length() - 1);
+              quoted = false;
+            }
           }
           props.setProperty(parsed[0], parsed[1]);
         }
@@ -44,56 +42,62 @@ Properties loadCommandLine () {
 }
 
 void setup(){
-  size(100, 100, P2D);
-  noLoop();
+  size(600, 600, P3D);
+  //noLoop();
   
   //load arguments into Map
   props = loadCommandLine();
   
   //create appropriately-sized canvas
   graphics = createGraphics(
-    parseInt(props.getProperty("width", "400")), 
-    parseInt(props.getProperty("height", "200")),
+    parseInt(props.getProperty("width", "1200")), 
+    parseInt(props.getProperty("height", "750")),
     P3D);
   
   // VERY IMPORTANT: Allways initialize geomerative in the setup
   RG.init(this);
-  
-  // The vertices to be used for the Bezier spline
-  PVector[] knots = new PVector[] {
-    new PVector(240, 0, 50), 
-    new PVector(120, 0, 0), 
-    new PVector(0, 0, -100), 
-    new PVector(-80, 0, 0), 
-    new PVector(-40, 50, 0), 
-    new PVector(60, 80, 50),
-  };
+}
 
-  // Use a BezierSpline to define the extrusion path
-  path = new P_BezierSpline(knots);
+//render to off-screen buffer
+void render(){
+  graphics.beginDraw();
+  graphics.clear();
+  graphics.background(255);
+  
+  String text = props.getProperty("text", "some test");
+  if (text != null && text.length() > 0 && trim(text).length() > 0){
+    RShape sText = RG.getText(text, "FreeSans.ttf", 72, CENTER);
+    RG.setPolygonizer(RG.ADAPTATIVE);
+    RPoint[] pText = sText.getPoints();
+    RMesh mText = sText.toMesh();
+  
+    graphics.fill(0);
+    graphics.stroke(0);
+    graphics.text(props.getProperty("text", text), 10, 20);
+    graphics.translate(graphics.width/2, 100);
+    sText.draw(graphics);
+    graphics.translate(0, 50);
+    for(int i = 0; pText != null && i < pText.length; i++){
+     graphics.point(pText[i].x, pText[i].y);
+    }
+    graphics.translate(0, 50);
+  
+    mText.setFill(0);
+    mText.draw(graphics);
+  }
+  graphics.endDraw();
 }
 
 void draw(){
-  RShape sText = RG.getText(props.getProperty("text", "some test"), "FreeSans.ttf", 72, CENTER);
-  RG.setPolygonizer(RG.ADAPTATIVE);
-  RPoint[] pText = sText.getPoints();
-  RMesh mText = sText.toMesh();
-  graphics.beginDraw();
-  graphics.background(255);
-  graphics.fill(0);
-  graphics.stroke(0);
-  graphics.text(props.getProperty("text", "some test"), 10, 20);
-  graphics.translate(graphics.width/2, 100);
-  sText.draw(graphics);
-  graphics.translate(0, 50);
-  for(int i = 0; i < pText.length; i++){
-    graphics.point(pText[i].x, pText[i].y);
+  if(iteration == 0){
+    render();
+    graphics.save(props.getProperty("image", "testImage.png"));
+  } else if (iteration == 1){
+    if (hasProps){
+      exit();
+    } else {
+      image(graphics, 0, 0, width, height);
+    }
   }
-  graphics.translate(0, 50);
-  graphics.sphere(10);
-  //mText.setFill(0);
-  //mText.draw(graphics);
-  graphics.endDraw();
-  graphics.save(props.getProperty("image", "testImage.png"));
-  exit();
+  iteration++;
 }
